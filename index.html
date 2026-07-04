@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Chores</title>
+  <style>
+    :root {
+      --bg-color: #0d0d0d;
+      --card-bg: #161616;
+      --input-bg: #222222;
+      --text-main: #ffffff;
+      --text-muted: #777777;
+      --green-accent: #26d07c;
+      --red-accent: #ff4545;
+      --border-color: #262626;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); padding: 30px; }
+    .container { width: 100%; max-width: 1400px; margin: 0 auto; display: none; }
+
+    /* Minimalist Login Overlay Screen */
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .login-box {
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .login-box h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 25px;
+      letter-spacing: -0.5px;
+    }
+
+    .login-box input {
+      width: 100%;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      margin-bottom: 16px;
+    }
+
+    .login-box input:focus { border-color: #555555; }
+
+    .login-box .error-msg {
+      color: var(--red-accent);
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* Top Center Counters */
+    .top-summary { display: flex; justify-content: center; margin-bottom: 40px; gap: 30px; }
+    .box { background-color: var(--card-bg); border: 2px solid var(--border-color); border-radius: 16px; padding: 20px 40px; min-width: 260px; text-align: center; }
+    .box-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 8px; }
+    .box-amount { font-size: 2.4rem; font-weight: 700; }
+    .reward-text { color: var(--green-accent); }
+    .time-text { color: #3498db; }
+
+    /* Controls & View Switcher Row */
+    .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+    .filter-group { display: flex; gap: 12px; }
+    .filter-pill { background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 18px; border-radius: 20px; font-size: 0.85rem; outline: none; width: 180px; }
+    
+    .view-switcher { display: flex; gap: 8px; background-color: var(--card-bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); }
+    .view-btn { background: none; border: none; color: var(--text-muted); padding: 6px 16px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-weight: 500; }
+    .view-btn.active { background-color: var(--input-bg); color: var(--text-main); }
+
+    /* Add Entry Form Row */
+    .add-row-form { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+    .add-row-form input { background-color: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; outline: none; }
+    .add-row-form input:disabled { background-color: #1a1a1a; color: #555555; cursor: not-allowed; }
+    .add-row-form input[type="text"].work-input { flex: 3; }
+    .add-row-form input[type="text"].time-input { flex: 1; }
+    .add-row-form input[type="number"].reward-input { width: 140px; }
+    
+    .action-btn { background-color: var(--text-main); color: var(--bg-color); border: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.9rem; white-space: nowrap; }
+    .action-btn:hover { background-color: #dddddd; }
+
+    /* Tables Layout */
+    .table-container { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; margin-bottom: 30px; }
+    .section-title { font-size: 1rem; color: var(--text-muted); margin: 0 0 15px 5px; text-transform: uppercase; letter-spacing: 1px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 18px 24px; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; }
+    th { background-color: #1c1c1c; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+    tr:last-child td { border-bottom: none; }
+
+    .col-work { width: auto; }
+    .col-time { width: 160px; color: var(--text-muted); text-align: right; }
+    .col-reward { width: 140px; font-weight: 500; text-align: right; }
+    .col-action { width: 100px; text-align: right; }
+
+    .active-reward-color { color: var(--green-accent); }
+    .archived-reward-color { color: #888888; }
+    .date-stamp { display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    
+    .check-btn { background: none; border: 2px solid #444; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: transparent; font-weight: bold; font-size: 0.75rem; transition: all 0.2s; margin-right: 12px; }
+    .check-btn:hover { border-color: var(--green-accent); color: var(--green-accent); }
+
+    .delete-action-btn { background: none; border: none; color: #444444; font-size: 1.2rem; cursor: pointer; padding: 0 5px; }
+    .delete-action-btn:hover { color: var(--red-accent); }
+  </style>
+
+  <!-- Firebase Legacy Compatibility Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- Login Overlay Screen -->
+<div id="login-screen" class="login-overlay">
+  <div class="login-box">
+    <h2>My Chores Access</h2>
+    <form id="login-form">
+      <input type="text" id="login-user" placeholder="Username or Email" required>
+      <input type="password" id="login-pass" placeholder="Password" required>
+      <div id="error-message" class="error-msg">Incorrect username or password.</div>
+      <button type="submit" class="action-btn" style="width: 100%; margin-top: 5px;">Login</button>
+    </form>
+  </div>
+</div>
+
+<div id="app-container" class="container">
+  <!-- Top Center Counters -->
+  <div class="top-summary">
+    <div class="box">
+      <div class="box-title">Total Rewards Earned</div>
+      <div id="total-rewards" class="box-amount reward-text">₹0.00</div>
+    </div>
+    <div class="box">
+      <div class="box-title">Total Time Taken</div>
+      <div id="total-time" class="box-amount time-text">0h 0m</div>
+    </div>
+  </div>
+
+  <!-- Filters and View Switcher Row -->
+  <div class="controls-row">
+    <div class="filter-group">
+      <input type="text" id="search-work" class="filter-pill" placeholder="Search Chores...">
+      <input type="text" id="search-date" class="filter-pill" placeholder="Filter by Date/Year...">
+    </div>
+    <div class="view-switcher">
+      <button id="view-active-btn" class="view-btn active">Pending Rewards</button>
+      <button id="view-archived-btn" class="view-btn">Previous Tasks</button>
+    </div>
+  </div>
+
+  <!-- Chore Logger Entry Strip -->
+  <form id="chore-form" class="add-row-form">
+    <input type="text" id="chore-work" class="work-input" placeholder="What chore did you do?" required>
+    <input type="text" id="chore-time" class="time-input" placeholder="Time (e.g., 5m, 1h 30m)" required>
+    <input type="number" id="chore-reward" class="reward-input" step="0.01" placeholder="Reward (₹)" required>
+    <button type="submit" class="action-btn">Log Chore</button>
+  </form>
+
+  <!-- Visual Data Table Sheet -->
+  <div id="section-heading" class="section-title">Pending Rewards</div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-work">Chore Description</th>
+          <th class="col-time">Time Spent</th>
+          <th class="col-reward">Reward</th>
+          <th class="col-action"></th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // Your exact custom config loaded directly from image_772141.png
+  const firebaseConfig = {
+    apiKey: "AIzaSyCUe0BUdASTqbOvlautpJet_v567b0CrIc",
+    authDomain: "my-chores-66299.firebaseapp.com",
+    databaseURL: "https://my-chores-66299-default-rtdb.firebaseio.com",
+    projectId: "my-chores-66299",
+    storageBucket: "my-chores-66299.firebasestorage.app",
+    messagingSenderId: "856327378559",
+    appId: "1:856327378559:web:e57a057d15e075659cd14a"
+  };
+
+  // Initialize Connection
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // Auth configuration properties
+  const ADMIN_USER = "kini.muralidhar@gmail.com";
+  const ADMIN_PASS = "iamadmin";
+  const REG_USER = "user123";
+  const REG_PASS = "iamuser";
+
+  const loginScreen = document.getElementById('login-screen');
+  const appContainer = document.getElementById('app-container');
+  const errorMsg = document.getElementById('error-message');
+  const rewardInput = document.getElementById('chore-reward');
+
+  let userRole = sessionStorage.getItem('userRole') || null;
+
+  if (userRole) {
+    loginScreen.style.display = 'none';
+    appContainer.style.display = 'block';
+    configurePermissions();
+    syncWithFirebase();
+  }
+
+  document.getElementById('login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const userInput = document.getElementById('login-user').value.trim();
+    const passInput = document.getElementById('login-pass').value;
+
+    if (userInput === ADMIN_USER && passInput === ADMIN_PASS) {
+      userRole = 'admin';
+      loginSuccess();
+    } else if (userInput === REG_USER && passInput === REG_PASS) {
+      userRole = 'user';
+      loginSuccess();
+    } else {
+      errorMsg.style.display = 'block';
+    }
+  });
+
+  function loginSuccess() {
+    sessionStorage.setItem('userRole', userRole);
+    loginScreen.style.display = 'none';
+    appContainer.style.display = 'block';
+    errorMsg.style.display = 'none';
+    configurePermissions();
+    syncWithFirebase();
+  }
+
+  function configurePermissions() {
+    if (userRole === 'user') {
+      rewardInput.value = 0;
+      rewardInput.disabled = true;
+      rewardInput.placeholder = "Admin Only";
+    } else {
+      rewardInput.disabled = false;
+      rewardInput.placeholder = "Reward (₹)";
+    }
+  }
+
+  // Live Sync Engine
+  let choreState = { active: {}, previous: {} };
+  let currentView = 'active'; 
+
+  const workFilter = document.getElementById('search-work');
+  const dateFilter = document.getElementById('search-date');
+  const tableBody = document.getElementById('table-body');
+  const sectionHeading = document.getElementById('section-heading');
+  const choreForm = document.getElementById('chore-form');
+
+  const viewActiveBtn = document.getElementById('view-active-btn');
+  const viewArchivedBtn = document.getElementById('view-archived-btn');
+
+  function syncWithFirebase() {
+    db.ref('chores').on('value', (snapshot) => {
+      const data = snapshot.val();
+      choreState = data || { active: {}, previous: {} };
+      if (!choreState.active) choreState.active = {};
+      if (!choreState.previous) choreState.previous = {};
+      render();
+    });
+  }
+
+  function parseTimeToMinutes(timeStr) {
+    if (!timeStr) return 0;
+    let totalMins = 0;
+    const cleanStr = timeStr.toLowerCase().replace(/\s+/g, '');
+    const hourMatch = cleanStr.match(/(\d+)(h|hr|hour)/);
+    if (hourMatch) totalMins += parseInt(hourMatch[1]) * 60;
+    const minSearchString = hourMatch ? cleanStr.split(hourMatch[2])[1] : cleanStr;
+    const minMatch = minSearchString ? minSearchString.match(/(\d+)(m|min)/) : null;
+    if (minMatch) {
+      totalMins += parseInt(minMatch[1]);
+    } else if (!hourMatch) {
+      const rawNumber = cleanStr.match(/^(\d+)$/);
+      if (rawNumber) totalMins += parseInt(rawNumber[1]);
+    }
+    return totalMins;
+  }
+
+  function render() {
+    if (!userRole) return;
+
+    const workVal = workFilter.value.toLowerCase();
+    const dateVal = dateFilter.value.toLowerCase();
+    tableBody.innerHTML = '';
+    
+    let runningTotalRewards = 0;
+    let runningTotalMinutes = 0;
+
+    const activeList = Object.keys(choreState.active).map(key => ({ id: key, ...choreState.active[key] })).reverse();
+    const previousList = Object.keys(choreState.previous).map(key => ({ id: key, ...choreState.previous[key] })).reverse();
+
+    previousList.forEach(c => { runningTotalRewards += c.reward; });
+    [...activeList, ...previousList].forEach(c => { runningTotalMinutes += parseTimeToMinutes(c.time_raw); });
+
+    document.getElementById('total-rewards').textContent = `₹${runningTotalRewards.toFixed(2)}`;
+    document.getElementById('total-time').textContent = `${Math.floor(runningTotalMinutes / 60)}h ${runningTotalMinutes % 60}m`;
+
+    const targetDataset = currentView === 'active' ? activeList : previousList;
+
+    targetDataset.filter(c => 
+      c.work.toLowerCase().includes(workVal) && c.date.toLowerCase().includes(dateVal)
+    ).forEach(c => {
+      const row = document.createElement('tr');
+      let actionColumnHtml = '';
+      
+      if (currentView === 'active') {
+        if (userRole === 'admin') {
+          actionColumnHtml = `
+            <button class="check-btn" onclick="claimChore('${c.id}')">✓</button>
+            <button class="delete-action-btn" onclick="deleteChore('${c.id}', 'active')">×</button>
+          `;
+        } else {
+          actionColumnHtml = `<span style="color:var(--text-muted); font-size:0.85rem;">Pending Approval</span>`;
+        }
+      } else {
+        if (userRole === 'admin') {
+          actionColumnHtml = `<button class="delete-action-btn" onclick="deleteChore('${c.id}', 'previous')">×</button>`;
+        } else {
+          actionColumnHtml = `<span style="color: var(--green-accent); font-size:0.85rem;">Paid</span>`;
+        }
+      }
+
+      row.innerHTML = `
+        <td class="col-work">
+          <div>${c.work}</div>
+          <span class="date-stamp">${c.date} at ${c.time}</span>
+        </td>
+        <td class="col-time">${c.time_raw}</td>
+        <td class="col-reward ${currentView === 'active' ? 'active-reward-color' : 'archived-reward-color'}">
+          ₹${c.reward.toFixed(2)}
+        </td>
+        <td class="col-action">${actionColumnHtml}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  window.claimChore = function(id) {
+    if (userRole !== 'admin') return;
+    const chore = choreState.active[id];
+    if (chore) {
+      const updates = {};
+      updates[`/chores/active/${id}`] = null;
+      updates[`/chores/previous/${id}`] = chore;
+      db.ref().update(updates);
+    }
+  };
+
+  window.deleteChore = function(id, listType) {
+    if (userRole !== 'admin') return;
+    db.ref(`chores/${listType}/${id}`).remove();
+  };
+
+  document.getElementById('chore-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const now = new Date();
+    const newChore = {
+      work: document.getElementById('chore-work').value.trim(),
+      time_raw: document.getElementById('chore-time').value.trim(),
+      reward: parseFloat(document.getElementById('chore-reward').value) || 0,
+      date: now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    db.ref('chores/active').push(newChore);
+    choreForm.reset();
+    configurePermissions();
+  });
+
+  viewActiveBtn.addEventListener('click', () => {
+    currentView = 'active';
+    viewActiveBtn.classList.add('active');
+    viewArchivedBtn.classList.remove('active');
+    choreForm.style.display = 'flex';
+    sectionHeading.textContent = 'Pending Rewards';
+    render();
+  });
+
+  viewArchivedBtn.addEventListener('click', () => {
+    currentView = 'previous';
+    viewArchivedBtn.classList.add('active');
+    viewActiveBtn.classList.remove('active');
+    choreForm.style.display = 'none'; 
+    sectionHeading.textContent = 'Archived Past Rewards';
+    render();
+  });
+
+  workFilter.addEventListener('input', render);
+  dateFilter.addEventListener('input', render);
+</script>
+</body>
+</html>
