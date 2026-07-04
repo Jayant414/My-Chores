@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -190,7 +190,7 @@
     <input type="text" id="chore-work" class="work-input" placeholder="What chore did you do?" required>
     <input type="text" id="chore-assigned" class="assigned-input" placeholder="Who gave the task? (e.g. Dad, Mom)" required>
     <input type="text" id="chore-time" class="time-input" placeholder="Time (e.g., 5m, 1h 30m)" required>
-    <input type="number" id="chore-reward" class="reward-input" step="0.01" placeholder="Reward (₹)" required>
+    <input type="number" id="chore-reward" class="reward-input" min="0" step="0.5" value="0.0" placeholder="Reward (₹)" required>
     <button type="submit" class="action-btn">Log Chore</button>
   </form>
 
@@ -229,7 +229,8 @@
   const db = firebase.database();
 
   // Auth configuration properties
-  const ADMIN_USER = "kini.muralidhar@gmail.com";
+  const ADMIN_USER_1 = "kini.muralidhar@gmail.com";
+  const ADMIN_USER_2 = "kini.leena@gmail.com";
   const ADMIN_PASS = "iamadmin";
   const REG_USER = "user123";
   const REG_PASS = "iamuser";
@@ -253,7 +254,7 @@
     const userInput = document.getElementById('login-user').value.trim();
     const passInput = document.getElementById('login-pass').value;
 
-    if (userInput === ADMIN_USER && passInput === ADMIN_PASS) {
+    if ((userInput === ADMIN_USER_1 || userInput === ADMIN_USER_2) && passInput === ADMIN_PASS) {
       userRole = 'admin';
       loginSuccess();
     } else if (userInput === REG_USER && passInput === REG_PASS) {
@@ -275,7 +276,7 @@
 
   function configurePermissions() {
     if (userRole === 'user') {
-      rewardInput.value = 0;
+      rewardInput.value = 0.0;
       rewardInput.disabled = true;
       rewardInput.placeholder = "Admin Only";
     } else {
@@ -324,7 +325,6 @@
     return totalMins;
   }
 
-  // Updates reward dynamically inside Firebase whenever the admin types a new number
   window.updateRewardInline = function(id, value) {
     const newAmount = parseFloat(value) || 0;
     db.ref(`chores/active/${id}`).update({ reward: newAmount });
@@ -358,12 +358,10 @@
       let actionColumnHtml = '';
       let rewardColumnHtml = '';
       
-      // Determine what elements to render inside the reward block column
       if (currentView === 'active') {
         if (userRole === 'admin') {
-          // Admin sees an interactive numeric text input box to change amounts easily
           rewardColumnHtml = `
-            ₹<input type="number" class="inline-reward-edit" step="0.01" value="${c.reward}" 
+            ₹<input type="number" class="inline-reward-edit" min="0" step="0.5" value="${c.reward}" 
               onchange="updateRewardInline('${c.id}', this.value)" 
               onkeydown="if(event.key==='Enter') this.blur()">
           `;
