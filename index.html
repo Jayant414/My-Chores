@@ -94,6 +94,7 @@
     .add-row-form input { background-color: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; outline: none; }
     .add-row-form input:disabled { background-color: #1a1a1a; color: #555555; cursor: not-allowed; }
     .add-row-form input[type="text"].work-input { flex: 3; }
+    .add-row-form input[type="text"].assigned-input { flex: 1.5; }
     .add-row-form input[type="text"].time-input { flex: 1; }
     .add-row-form input[type="number"].reward-input { width: 140px; }
     
@@ -109,14 +110,30 @@
     tr:last-child td { border-bottom: none; }
 
     .col-work { width: auto; }
+    .col-assigned { width: 180px; color: var(--text-main); }
     .col-time { width: 160px; color: var(--text-muted); text-align: right; }
-    .col-reward { width: 140px; font-weight: 500; text-align: right; }
+    .col-reward { width: 160px; font-weight: 500; text-align: right; }
     .col-action { width: 100px; text-align: right; }
 
     .active-reward-color { color: var(--green-accent); }
     .archived-reward-color { color: #888888; }
     .date-stamp { display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
     
+    /* Inline Editing Inputs for Admin */
+    .inline-reward-edit {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      color: var(--green-accent);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      text-align: right;
+      width: 100px;
+      outline: none;
+    }
+    .inline-reward-edit:focus { border-color: var(--green-accent); }
+
     .check-btn { background: none; border: 2px solid #444; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: transparent; font-weight: bold; font-size: 0.75rem; transition: all 0.2s; margin-right: 12px; }
     .check-btn:hover { border-color: var(--green-accent); color: var(--green-accent); }
 
@@ -133,7 +150,7 @@
 <!-- Login Overlay Screen -->
 <div id="login-screen" class="login-overlay">
   <div class="login-box">
-    <h2>Website Access</h2>
+    <h2>My Chores Access</h2>
     <form id="login-form">
       <input type="text" id="login-user" placeholder="Username or Email" required>
       <input type="password" id="login-pass" placeholder="Password" required>
@@ -171,6 +188,7 @@
   <!-- Chore Logger Entry Strip -->
   <form id="chore-form" class="add-row-form">
     <input type="text" id="chore-work" class="work-input" placeholder="What chore did you do?" required>
+    <input type="text" id="chore-assigned" class="assigned-input" placeholder="Who gave the task? (e.g. Dad, Mom)" required>
     <input type="text" id="chore-time" class="time-input" placeholder="Time (e.g., 5m, 1h 30m)" required>
     <input type="number" id="chore-reward" class="reward-input" step="0.01" placeholder="Reward (₹)" required>
     <button type="submit" class="action-btn">Log Chore</button>
@@ -183,6 +201,7 @@
       <thead>
         <tr>
           <th class="col-work">Chore Description</th>
+          <th class="col-assigned">Assigned By</th>
           <th class="col-time">Time Spent</th>
           <th class="col-reward">Reward</th>
           <th class="col-action"></th>
@@ -305,6 +324,12 @@
     return totalMins;
   }
 
+  // Updates reward dynamically inside Firebase whenever the admin types a new number
+  window.updateRewardInline = function(id, value) {
+    const newAmount = parseFloat(value) || 0;
+    db.ref(`chores/active/${id}`).update({ reward: newAmount });
+  };
+
   function render() {
     if (!userRole) return;
 
@@ -331,17 +356,27 @@
     ).forEach(c => {
       const row = document.createElement('tr');
       let actionColumnHtml = '';
+      let rewardColumnHtml = '';
       
+      // Determine what elements to render inside the reward block column
       if (currentView === 'active') {
         if (userRole === 'admin') {
+          // Admin sees an interactive numeric text input box to change amounts easily
+          rewardColumnHtml = `
+            ₹<input type="number" class="inline-reward-edit" step="0.01" value="${c.reward}" 
+              onchange="updateRewardInline('${c.id}', this.value)" 
+              onkeydown="if(event.key==='Enter') this.blur()">
+          `;
           actionColumnHtml = `
             <button class="check-btn" onclick="claimChore('${c.id}')">✓</button>
             <button class="delete-action-btn" onclick="deleteChore('${c.id}', 'active')">×</button>
           `;
         } else {
+          rewardColumnHtml = `₹${c.reward.toFixed(2)}`;
           actionColumnHtml = `<span style="color:var(--text-muted); font-size:0.85rem;">Pending Approval</span>`;
         }
       } else {
+        rewardColumnHtml = `₹${c.reward.toFixed(2)}`;
         if (userRole === 'admin') {
           actionColumnHtml = `<button class="delete-action-btn" onclick="deleteChore('${c.id}', 'previous')">×</button>`;
         } else {
@@ -354,9 +389,10 @@
           <div>${c.work}</div>
           <span class="date-stamp">${c.date} at ${c.time}</span>
         </td>
+        <td class="col-assigned">${c.assigned_by || 'Not Specified'}</td>
         <td class="col-time">${c.time_raw}</td>
         <td class="col-reward ${currentView === 'active' ? 'active-reward-color' : 'archived-reward-color'}">
-          ₹${c.reward.toFixed(2)}
+          ${rewardColumnHtml}
         </td>
         <td class="col-action">${actionColumnHtml}</td>
       `;
@@ -386,6 +422,7 @@
     const now = new Date();
     const newChore = {
       work: document.getElementById('chore-work').value.trim(),
+      assigned_by: document.getElementById('chore-assigned').value.trim(),
       time_raw: document.getElementById('chore-time').value.trim(),
       reward: parseFloat(document.getElementById('chore-reward').value) || 0,
       date: now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -419,4 +456,4 @@
   dateFilter.addEventListener('input', render);
 </script>
 </body>
-</html> 
+</html>
